@@ -4,45 +4,40 @@ $PSDefaultParameterValues.Add('Get-Help:ShowWindow', $true)
 $PSDefaultParameterValues.Add('Out-Default:OutVariable', 'LastOut')
 
 function prompt {
-    # Set the maximum path length as a fraction of the console width...
-    # $maxLength = [uint16]($host.UI.RawUI.WindowSize.Width / 4)
-    # ...or try reserve a number of characters.
-    $maxLength = $host.UI.RawUI.WindowSize.Width - 88
+    # Set the maximum prompt length as a fraction of the console width.
+    $maxLength = [uint16]($host.UI.RawUI.WindowSize.Width * 0.45)
+    # ...or try to reserve a given amount of space.
+    # $maxLength = $host.UI.RawUI.WindowSize.Width - 80
 
-    $location = $executionContext.SessionState.Path.CurrentLocation.Path
+    # Define the parts of the prompt string.
+    $psVer = "PS$($PSVersionTable.PSVersion.Major) "
+    $path = $executionContext.SessionState.Path.CurrentLocation.Path
+    $prompt = "$('>' * ($nestedPromptLevel + 1)) "
 
-    if ($location.Length -gt $maxLength) {
+    # Define a function to measure the prompt length.
+    function promptLength {
+        $psVer.Length + $path.Length + $prompt.Length
+    }
+
+    if ((promptLength) -gt $maxLength) {
         # Collapse the $home path to '~'.
-        if ($location -like "$home*") { $location = $location.Replace($home, '~') }
+        if ($path -like "$home*") { $path = $path.Replace($home, '~') }
 
         # Use the system path delimiter.
         $dsc = [System.IO.Path]::DirectorySeparatorChar
 
         # Split the path into an array and filter out empty elements.
-        [string[]] $split = $location -split "\$($dsc)" | Where-Object { $_ -match '\S+' }
+        [string[]] $split = $path -split "\$($dsc)" | Where-Object { $_ -match '\S+' }
 
-        if ($split.Length -gt 1) {
-            # Build the path string from the current location up.
-            do {
-                $buildPath = $split[--$i], $buildPath -join $dsc
-            } 
-            while (
-                ($buildPath.Length + $split[$i - 1].Length + 1) -lt ($maxLength - $split[0].Length) -and 
-                ($split.Length - 1) -gt [Math]::Abs($i)
-            )
-            $buildPath = $buildPath.Trim($dsc)
+        # Collapse parts of the path (staring with the 2nd) until the prompt is
+        # short enough or the penultimate array element has been collapsed.
+        while ((promptLength) -gt $maxLength -and (++$i -lt ($split.Length - 1))) {
+            $split[$i] = '..'
+            $path = $split -join $dsc
         }
-
-        # Always include the first element of the array.
-        $location = $split[0] 
-        if (($split.Length - 1) -gt [Math]::Abs($i)) { $location += "$dsc.." }
-        $location = $location, $buildPath -join $dsc
     }
 
-    # Include the major PS version.
-    $ver = $PSVersionTable.PSVersion.Major
-
-    "PS$ver $location$('>' * ($nestedPromptLevel + 1)) "
+    $psVer, $path, $prompt -join ''
 
     # The default prompt function definition:
     #  "PS $($executionContext.SessionState.Path.CurrentLocation)$('>' * ($nestedPromptLevel + 1)) ";
