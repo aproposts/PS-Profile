@@ -2,6 +2,7 @@ New-Alias -Name 'gh' -Value 'Get-Help'
 
 $PSDefaultParameterValues.Add('Get-Help:ShowWindow', $true)
 $PSDefaultParameterValues.Add('Out-Default:OutVariable', 'LastOut')
+$PSDefaultParameterValues.Add('Format-Table:AutoSize', $true)
 
 function prompt {
     # Set the maximum prompt length as a fraction of the console width.
