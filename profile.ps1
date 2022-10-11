@@ -8,7 +8,6 @@ $PSDefaultParameterValues.Add('Format-Table:AutoSize', $true)
 # Copy default output into a variable.
 $PSDefaultParameterValues.Add('Out-Default:OutVariable', 'LastOut')
 
-
 function prompt {
 
     # Inclue the major PSVersion in the prompt.
