@@ -1,4 +1,4 @@
-# PS-Profile
+# PowerShell Profile
 
 This is the repository for my `profile.ps1` file. I use it for both Windows
 PowerShell 5.1 and PowerShell (Core) 7.2 and all PowerShell hosts (Windows
