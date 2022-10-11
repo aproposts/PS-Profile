@@ -37,7 +37,8 @@ function prompt {
         # ...the posh-git moduled is loaded...
         (Get-Module 'posh-git') -and 
         # ...and we're in a repository.
-        ($git = ':{0}' -f (Write-GitStatus (Get-GitStatus)).Trim(' '))) {
+        ($git = "$(Write-GitStatus (Get-GitStatus))".Trim(' '))) {
+        $git = ':' + $git
         $gitNoANSI = $git -replace '\x1b\[[0-9;]*m', ''
     }
 
