@@ -11,8 +11,9 @@ other users which dot-source this profile.
 
 ## Features
 
-The goal with this profile is to get the functionality provide small
-enhancements without going overboard on the level of customization.
+The goal with this profile is to small enhancements to make for a more pleasant
+terminal experience without going overboard on the level of customization. If it
+were to be branded, 'Default Plus' would be a good name.
 
 ### Aliases
 
