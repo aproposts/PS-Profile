@@ -26,10 +26,10 @@ were to be branded, 'Default Plus' would be a good name.
   the terminal.
 - `Out-Default` writes to the variable `$LastOut`, which can be useful when you
   forget to assign output to a variable. If you wish to copy the contents of
-  $LastOut to a new variable, you'll need to copy the *value* of `$LastOut` in
+  $LastOut to a variable, you'll need to copy the *value* of `$LastOut` in
   the following manner:
   ```ps
-  $newVariable = $LastOut.Clone()
+  $someVariable = $LastOut.Clone()
   ```
 
 ### Prompt
@@ -38,7 +38,7 @@ were to be branded, 'Default Plus' would be a good name.
   prompt and if the terminal supports ANSI control characters, it is stylized to
   reduce visual prominence.
 - If the PowerShell session is running in an Administrator context,
-  `$env:username@` is prepended to the path as a reminder that commands will be
+  `"$env:username@"` is prepended to the path as a reminder that commands will be
   run in that context.
 - If the prompt will exceed half the width of the terminal, the path will be
   truncated while retaining context.
