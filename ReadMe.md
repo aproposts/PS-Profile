@@ -38,10 +38,10 @@ were to be branded, 'Default Plus' would be a good name.
   prompt and if the terminal supports ANSI control characters, it is stylized to
   reduce visual prominence.
 - If the PowerShell session is running in an Administrator context,
-  `"$env:username@"` is prepended to the path as a reminder that commands will be
-  run in that context.
+  `"$env:username@"` is prepended to the path as a reminder that commands will
+  be run in that context.
 - If the prompt will exceed half the width of the terminal, the path will be
-  truncated while retaining context.
+  truncated as necessary while retaining context.
 - If the terminal supports ANSI control characters, the posh-git module has been
   imported, and the current location is a Git repository, the Git status will be
   appended to the path.
