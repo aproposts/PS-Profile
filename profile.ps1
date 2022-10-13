@@ -7,6 +7,31 @@ $PSDefaultParameterValues.Add('Format-Table:AutoSize', $true)
 
 # Copy default output into a variable.
 $PSDefaultParameterValues.Add('Out-Default:OutVariable', 'LastOut')
+function Get-LastOut {
+    <#
+    .SYNOPSIS
+        Enumerate and output the contents of $LastOut.
+    .DESCRIPTION
+        When a default OutVariable parameter is set on Out-Default to put output
+        in a variable '$LastOut', it is always an object array. This function
+        eases access to the contents of the array for assignment and
+        interrogation.
+    .EXAMPLE
+        $someVariable = Get-LastOut
+        Assign the value of $LastOut to $someVariable.
+    .EXAMPLE
+        Get-LastOut -OutVariable someVariable
+        Output and assign the value of $LastOut to $someVariable.
+    .EXAMPLE
+        (Get-LastOut).GetType()
+        Get the type name(s) of the object(s) in $LastOut. This can only be done
+        once as $LastOut gets reassigned by Out-Default in the execution of this
+        expression.
+    #>
+    [CmdletBinding()]
+    $LastOut | ForEach-Object { $PSItem }
+}
+New-Alias -Name 'glo' -Value 'Get-LastOut'
 
 function prompt {
 

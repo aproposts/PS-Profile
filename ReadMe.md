@@ -25,11 +25,20 @@ were to be branded, 'Default Plus' would be a good name.
 - `Format-Table` has `-AutoSize` applied for nicer presentation of table data in
   the terminal.
 - `Out-Default` writes to the variable `$LastOut`, which can be useful when you
-  forget to assign output to a variable. If you wish to copy the contents of
-  $LastOut to a variable, you'll need to copy the *value* of `$LastOut` in
-  the following manner:
+  forget to assign output to a variable.
+
+### Functions
+
+- `Get-LastOut` with the alias `glo` provides convenient access to the `$LastOut`
+  variable.
+  
+  One of the issues with $LastOut is that is is always an array object, which
+  requires extra handling to access the objects inside. This minimal function
+  enumerates the array object and outputs the contents for ready access.
+
+  The output of the last command can then easily be assigned to a variable:
   ```ps
-  $someVariable = $LastOut.Clone()
+  $someVariable = glo
   ```
 
 ### Prompt
