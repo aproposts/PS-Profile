@@ -4,16 +4,15 @@ This is the repository for my `profile.ps1` file. I use it for both Windows
 PowerShell 5.1 and PowerShell (Core) 7.2 and all PowerShell hosts (Windows
 Terminal, VSCode, etc.).
 
-I keep one copy at the PowerShell (Core) 7.2
-`$PROFILE.CurrentUserAllHosts` location (`~\Documents\Powershell\profile.ps1`)
-and have stub `profile.ps1` files for Windows PowerShell and
-other users which dot-source this profile.
+I keep one copy at the PowerShell (Core) 7.2 `$PROFILE.CurrentUserAllHosts`
+location (`~\Documents\Powershell\profile.ps1`) and have stub `profile.ps1`
+files for Windows PowerShell and other users which dot-source this profile.
 
 ## Features
 
-The goal with this profile is to small enhancements to make for a more pleasant
-terminal experience without going overboard on the level of customization. If it
-were to be branded, 'Default Plus' would be a good name.
+The goal with this profile is to provide small enhancements which make for a
+more pleasant terminal experience without going overboard on the level of
+customization. If it were to be branded, 'Default Plus' would be a good name.
 
 ### Aliases
 
@@ -22,24 +21,6 @@ were to be branded, 'Default Plus' would be a good name.
 ### Default Parameters
 
 - `Get-Help` has `-ShowWindow` applied to keep a cleaner terminal buffer.
-- `Format-Table` has `-AutoSize` applied for nicer presentation of table data in
-  the terminal.
-- `Out-Default` writes to the variable `$LastOut`, which can be useful when you
-  forget to assign output to a variable.
-
-### Functions
-
-- `Get-LastOut` with the alias `glo` provides convenient access to the `$LastOut`
-  variable.
-  
-  One of the issues with $LastOut is that is is always an array object, which
-  requires extra handling to access the objects inside. This minimal function
-  enumerates the array object and outputs the contents for ready access.
-
-  The output of the last command can then easily be assigned to a variable:
-  ```ps
-  $someVariable = glo
-  ```
 
 ### Prompt
 
@@ -54,3 +35,4 @@ were to be branded, 'Default Plus' would be a good name.
 - If the terminal supports ANSI control characters, the posh-git module has been
   imported, and the current location is a Git repository, the Git status will be
   appended to the path.
+  

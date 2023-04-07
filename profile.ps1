@@ -1,50 +1,57 @@
 # A 'helpful' alias.
 New-Alias -Name 'gh' -Value 'Get-Help'
+New-Alias -Name 'mc' -Value 'Measure-Command'
 
 # Convenient default parameters.
 $PSDefaultParameterValues.Add('Get-Help:ShowWindow', $true)
-$PSDefaultParameterValues.Add('Format-Table:AutoSize', $true)
 
-# Copy default output into a variable.
-$PSDefaultParameterValues.Add('Out-Default:OutVariable', 'LastOut')
-function Get-LastOut {
-    <#
-    .SYNOPSIS
-        Enumerate and output the contents of $LastOut.
-    .DESCRIPTION
-        When a default OutVariable parameter is set on Out-Default to put output
-        in a variable '$LastOut', it is always an object array. This function
-        eases access to the contents of the array for assignment and
-        interrogation.
-    .EXAMPLE
-        $someVariable = Get-LastOut
-        Assign the value of $LastOut to $someVariable.
-    .EXAMPLE
-        Get-LastOut -OutVariable someVariable
-        Output and assign the value of $LastOut to $someVariable.
-    .EXAMPLE
-        (Get-LastOut).GetType()
-        Get the type name(s) of the object(s) in $LastOut. This can only be done
-        once as $LastOut gets reassigned by Out-Default in the execution of this
-        expression.
-    #>
-    [CmdletBinding()]
-    $LastOut | ForEach-Object { $PSItem }
+# Add the CurrentUser Windows Powershell path to the new/core Powershell module path.
+if ($PSVersionTable.PSEdition -eq 'Core' -and
+    $PSVersionTable.OS -like '*Windows*'
+) {
+    [System.Collections.ArrayList] $local:modulePathArray = $env:PSModulePath.Split(';')
+    $local:currUserWinPSPath = (
+        '{0}\WindowsPowerShell\Modules' -f [System.Environment]::GetFolderPath('MyDocuments')
+    )
+    
+    if (-not $modulePathArray.Contains($local:currUserWinPSPath)) {
+        $local:modulePathArray.Insert(1,$local:currUserWinPSPath) | Out-Null
+        $env:PSModulePath = $local:modulePathArray -join ';'
+    }
 }
-New-Alias -Name 'glo' -Value 'Get-LastOut'
 
 function prompt {
+    # Define the variables to prevent scope conflicts.
+    [string] $local:psVerNoANSI = ''
+    [string] $local:psVer = ''
+    [string] $local:historyIdNoANSI = ''
+    [string] $local:historyId = ''
+    [string] $local:user = ''
+    [string] $local:path = ''
+    [string] $local:git = ''
+    [string] $local:gitNoAnsi = ''
+    [string] $local:prompt = ''
 
     # Inclue the major PSVersion in the prompt.
     $psVerNoANSI = "PS$($PSVersionTable.PSVersion.Major) "
-    # Stylize the PSVersion part of the prompt if the host is ANSI capable.
+
+    # Include the history ID of the current command if OutputHistory is loaded.
+    if (Get-Module OutputHistory) {
+        $historyIdNoANSI = " $($MyInvocation.HistoryId.ToString().PadLeft(2,'0')) "
+    }
+
+    # Stylize the PSVersion and history ID part of the prompt if the host is ANSI capable.
     if ($Host.UI.SupportsVirtualTerminal) {
         $esc = $([char]27)
         $psVer = "$esc[3m$esc[38;5;8m$psVerNoANSI$esc[0m"
-    } else { $psVer = $psVerNoANSI }
+        $historyId = "$esc[38;5;8m$historyIdNoANSI$esc[0m"
+    } else {
+        $psVer = $psVerNoANSI
+        $historyId = $historyIdNoANSI
+    }
 
     # Include the username in the prompt if the session is in an Admin context.
-    $isAdmin = [Security.Principal.WindowsPrincipal]::new(
+    $local:isAdmin = [Security.Principal.WindowsPrincipal]::new(
         [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole(
         [Security.Principal.WindowsBuiltinRole]::Administrator)
     if ($isAdmin) { $user = "$env:USERNAME@" }
@@ -70,17 +77,22 @@ function prompt {
 
     # Define a function to measure the prompt length.
     function promptLength {
-        $psVerNoANSI.Length + $user.Length + $path.Length + $gitNoANSI.Length + $prompt.Length
+        $psVerNoANSI.Length + 
+        $historyIdNoANSI.Length + 
+        $user.Length + 
+        $path.Length + 
+        $gitNoANSI.Length + 
+        $prompt.Length
     }
 
     # Set the maximum prompt length as a fraction of the console width.
-    $maxLength = [uint16]($host.UI.RawUI.BufferSize.Width * 0.5) # Use 'BufferSize' to support ISE.
+    $maxLength = [uint16]($Host.UI.RawUI.BufferSize.Width * 0.5) # Use 'BufferSize' to support ISE.
     # ...or try to reserve a given amount of space.
-    # $maxLength = $host.UI.RawUI.BufferSize.Width - 80 # Use 'BufferSize' to support ISE.
+    # $maxLength = $Host.UI.RawUI.BufferSize.Width - 80 # Use 'BufferSize' to support ISE.
 
     if ((promptLength) -gt $maxLength) {
-        # Collapse the $home path to '~'.
-        if ($path -like "$home*") { $path = $path.Replace($home, '~') }
+        # Collapse the $Home path to '~'.
+        if ($path -like "$Home*") { $path = $path.Replace($Home, '~') }
 
         # Use the system path delimiter.
         $dsc = [System.IO.Path]::DirectorySeparatorChar
@@ -99,7 +111,12 @@ function prompt {
         }
     }
 
-    $psVer, $user, $path, $git, $prompt -join ''
+    $psVer,
+    $historyId,
+    $user,
+    $path,
+    $git,
+    $prompt -join ''
 
     # The default prompt function definition:
     #  "PS $($executionContext.SessionState.Path.CurrentLocation)$('>' * ($nestedPromptLevel + 1)) ";
