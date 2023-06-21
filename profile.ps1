@@ -1,11 +1,36 @@
 # A 'helpful' alias.
 New-Alias -Name 'gh' -Value 'Get-Help'
 New-Alias -Name 'mc' -Value 'Measure-Command'
+New-Alias -Name 'rvdns' -Value 'Resolve-DnsName'
 
 # Convenient default parameters.
-$PSDefaultParameterValues.Add('Get-Help:ShowWindow', $true)
+$PSDefaultParameterValues = @{
+    'Get-Help:ShowWindow' = $true
+    'New-PSSession:Credential' = {Get-Secret sys}
+    'Enter-PSSession:Credential' = {Get-Secret sys}
+}
 
-# Add the CurrentUser Windows Powershell path to the new/core Powershell module path.
+# PSReadline Configuration
+if (Get-Module -Name PSReadLine) {
+    Set-PSReadLineKeyHandler -Key UpArrow -Function HistorySearchBackward
+    Set-PSReadLineKeyHandler -Key DownArrow -Function HistorySearchForward
+    Set-PSReadLineKeyHandler -Key Tab -Function Complete
+}
+
+# Add the CurrentUser Windows Powershell Scripts location to the environment path.
+if ($PSVersionTable.PSEdition -eq 'Desktop' -or
+    $PSVersionTable.OS -like '*Windows*'
+) {
+    $local:scriptPath = '{0}\WindowsPowershell\Scripts' -f [System.Environment]::GetFolderPath('MyDocuments')
+    [System.Collections.ArrayList] $local:envPathArray = $env:Path -split ';'
+
+    if ($local:scriptPath -notin $local:envPathArray) {
+        $local:envPathArray.Add($scriptPath) | Out-Null
+        $env:Path = $local:envPathArray -join ';'
+    }
+}
+
+# Add the CurrentUser Windows Powershell module path to the new/core Powershell module path.
 if ($PSVersionTable.PSEdition -eq 'Core' -and
     $PSVersionTable.OS -like '*Windows*'
 ) {
