@@ -1,20 +1,20 @@
-# A 'helpful' alias.
-New-Alias -Name 'gh' -Value 'Get-Help'
-New-Alias -Name 'mc' -Value 'Measure-Command'
-New-Alias -Name 'rvdns' -Value 'Resolve-DnsName'
+# Set some aliases.
+Set-Alias -Name 'gh' -Value 'Get-Help'
+Set-Alias -Name 'mc' -Value 'Measure-Command'
+Set-Alias -Name 'rvdns' -Value 'Resolve-DnsName'
 
 # Convenient default parameters.
 $PSDefaultParameterValues = @{
     'Get-Help:ShowWindow' = $true
     'New-PSSession:Credential' = {Get-Secret sys}
-    'Enter-PSSession:Credential' = {Get-Secret sys}
 }
 
 # PSReadline Configuration
 if (Get-Module -Name PSReadLine) {
-    Set-PSReadLineKeyHandler -Key UpArrow -Function HistorySearchBackward
-    Set-PSReadLineKeyHandler -Key DownArrow -Function HistorySearchForward
-    Set-PSReadLineKeyHandler -Key Tab -Function Complete
+    # Set-PSReadLineKeyHandler -Key Tab -Function Complete
+    Set-PSReadLineOption -EditMode Emacs
+    Set-PSReadLineKeyHandler -Key @('UpArrow','Ctrl+p') -Function HistorySearchBackward
+    Set-PSReadLineKeyHandler -Key @('DownArrow','Ctrl+n') -Function HistorySearchForward
 }
 
 # Add the CurrentUser Windows Powershell Scripts location to the environment path.
@@ -93,7 +93,8 @@ function prompt {
         # ...the posh-git moduled is loaded...
         (Get-Module 'posh-git') -and 
         # ...and we're in a repository.
-        ($git = "$(Write-GitStatus (Get-GitStatus))".Trim(' '))) {
+        ($git = "$(Write-GitStatus (Get-GitStatus))".Trim(' '))
+    ) {
         $git = ':' + $git
         $gitNoANSI = $git -replace '\x1b\[[0-9;]*m', ''
     }
