@@ -2,19 +2,14 @@
 Set-Alias -Name 'gh' -Value 'Get-Help'
 Set-Alias -Name 'mc' -Value 'Measure-Command'
 Set-Alias -Name 'rvdns' -Value 'Resolve-DnsName'
+Set-Alias -Name 'gsc' -Value 'Get-Secret'
 
 # Convenient default parameters.
 $PSDefaultParameterValues = @{
-    'Get-Help:ShowWindow' = $true
-    'New-PSSession:Credential' = {Get-Secret sys}
-}
-
-# PSReadline Configuration
-if (Get-Module -Name PSReadLine) {
-    # Set-PSReadLineKeyHandler -Key Tab -Function Complete
-    Set-PSReadLineOption -EditMode Emacs
-    Set-PSReadLineKeyHandler -Key @('UpArrow','Ctrl+p') -Function HistorySearchBackward
-    Set-PSReadLineKeyHandler -Key @('DownArrow','Ctrl+n') -Function HistorySearchForward
+    'Get-Help:ShowWindow'               = $true
+    'Get-Secret:Name'                   = 'sys'
+    'New-PSSession:Credential'          = { Get-Secret }
+    'Connect-SharedResource:Credential' = { Get-Secret }
 }
 
 # Add the CurrentUser Windows Powershell Scripts location to the environment path.
@@ -40,22 +35,22 @@ if ($PSVersionTable.PSEdition -eq 'Core' -and
     )
     
     if (-not $modulePathArray.Contains($local:currUserWinPSPath)) {
-        $local:modulePathArray.Insert(1,$local:currUserWinPSPath) | Out-Null
+        $local:modulePathArray.Insert(1, $local:currUserWinPSPath) | Out-Null
         $env:PSModulePath = $local:modulePathArray -join ';'
     }
 }
 
 function prompt {
     # Define the variables to prevent scope conflicts.
-    [string] $local:psVerNoANSI = ''
-    [string] $local:psVer = ''
-    [string] $local:historyIdNoANSI = ''
-    [string] $local:historyId = ''
-    [string] $local:user = ''
-    [string] $local:path = ''
-    [string] $local:git = ''
-    [string] $local:gitNoAnsi = ''
-    [string] $local:prompt = ''
+    $local:psVerNoANSI = [string] ''
+    $local:psVer = [string] ''
+    $local:historyIdNoANSI = [string] ''
+    $local:historyId = [string] ''
+    $local:user = [string] ''
+    $local:path = [string] ''
+    $local:git = [string] ''
+    $local:gitNoAnsi = [string] ''
+    $local:prompt = [string] ''
 
     # Inclue the major PSVersion in the prompt.
     $psVerNoANSI = "PS$($PSVersionTable.PSVersion.Major) "
@@ -70,7 +65,8 @@ function prompt {
         $esc = $([char]27)
         $psVer = "$esc[3m$esc[38;5;8m$psVerNoANSI$esc[0m"
         $historyId = "$esc[38;5;8m$historyIdNoANSI$esc[0m"
-    } else {
+    }
+    else {
         $psVer = $psVerNoANSI
         $historyId = $historyIdNoANSI
     }
@@ -84,7 +80,8 @@ function prompt {
     # Use ProviderPath if there's no drive defined for the location provider.
     if ($executionContext.SessionState.Path.CurrentLocation.Drive) {
         $path = $executionContext.SessionState.Path.CurrentLocation.Path
-    } else {
+    }
+    else {
         $path = $executionContext.SessionState.Path.CurrentLocation.ProviderPath
     }
 
@@ -149,4 +146,108 @@ function prompt {
     # .Link
     # https://go.microsoft.com/fwlink/?LinkID=225750
     # .ExternalHelp System.Management.Automation.dll-help.xml
+}
+
+# PSReadline Configuration
+if (Get-Module -Name PSReadLine) {
+    # Set-PSReadLineKeyHandler -Key Tab -Function Complete # Redundnat in Emacs EditMode
+    Set-PSReadLineOption -EditMode Emacs
+    Set-PSReadLineKeyHandler -Key @('UpArrow', 'Ctrl+p') -Function HistorySearchBackward
+    Set-PSReadLineKeyHandler -Key @('DownArrow', 'Ctrl+n') -Function HistorySearchForward
+    Set-PSReadLineKeyHandler -Key 'Ctrl+Spacebar' -Function SetMark
+    Set-PSReadLineKeyHandler -Key 'Ctrl+/' -Function Undo
+    Set-PSReadLineKeyHandler -Key 'Ctrl+?' -Function Redo
+
+    function selectRegion {
+        $string = $point = $mark = $null
+        [Microsoft.PowerShell.PSConsoleReadLine]::GetBufferState([ref]$string, [ref]$point)
+        [Microsoft.PowerShell.PSConsoleReadLine]::ExchangePointAndMark()
+        [Microsoft.PowerShell.PSConsoleReadLine]::GetBufferState([ref]$string, [ref]$mark)
+                
+        switch ($point - $mark) {
+            { $_ -gt 0 } {
+                for ($i = 0; $i -lt $_; $i++ ) {
+                    [Microsoft.PowerShell.PSConsoleReadLine]::SelectForwardChar()
+                }
+            }
+            { $_ -lt 0 } {
+                for ($i = 0; $i -gt $_; $i-- ) {
+                    [Microsoft.PowerShell.PSConsoleReadLine]::SelectBackwardChar()
+                }
+            }
+            default {
+                throw 'No region to select.'
+            }
+        }
+    }
+
+    function cancelSelection {
+        $string = $cursor = $null 
+        [Microsoft.PowerShell.PSConsoleReadLine]::GetBufferState([ref]$string, [ref]$cursor)
+        
+        $start = $length = $null
+        [Microsoft.PowerShell.PSConsoleReadLine]::GetSelectionState([ref]$start, [ref]$length)
+
+        switch ($cursor - $start) {
+            { $_ -gt 0 } {
+                for ($i = 0; $i -lt $length; $i++) {
+                    [Microsoft.PowerShell.PSConsoleReadLine]::SelectBackwardChar()
+                }
+            }
+            { $_ -le 0 } {
+                for ($i = 0; $i -lt $length; $i++ ) {
+                    [Microsoft.PowerShell.PSConsoleReadLine]::SelectForwardChar()
+                }
+            }
+        }
+        
+        # [Microsoft.PowerShell.PSConsoleReadLine]::GotoColumn($null, $cursor + 1)
+        [Microsoft.PowerShell.PSConsoleReadLine]::SetCursorPosition($cursor)
+    }
+
+    Set-PSReadLineKeyHandler -Key 'Ctrl+w' -ScriptBlock {
+        param($key, $arg)
+
+        try {
+            selectRegion
+            [Microsoft.PowerShell.PSConsoleReadLine]::Copy()
+            [Microsoft.PowerShell.PSConsoleReadLine]::KillRegion()
+            cancelSelection
+            [Microsoft.PowerShell.PSConsoleReadLine]::SetMark()
+        }
+        catch {}
+    } 
+
+    Set-PSReadLineKeyHandler -Key 'Alt+w' -ScriptBlock {
+        param($key, $arg)
+
+        try {
+            $string = $cursorA = $cursorB = $null 
+            [Microsoft.PowerShell.PSConsoleReadLine]::GetBufferState([ref]$string, [ref]$cursorA)
+            selectRegion
+            [Microsoft.PowerShell.PSConsoleReadLine]::Copy()
+            [Microsoft.PowerShell.PSConsoleReadLine]::KillRegion()
+            [Microsoft.PowerShell.PSConsoleReadLine]::SetMark()
+            [Microsoft.PowerShell.PSConsoleReadLine]::Yank()
+            cancelSelection
+            [Microsoft.PowerShell.PSConsoleReadLine]::GetBufferState([ref]$string, [ref]$cursorB)
+            if ($cursorB -ne $cursorA) {
+                [Microsoft.PowerShell.PSConsoleReadLine]::ExchangePointAndMark()
+            }
+        }
+        catch {}
+    }
+
+    Set-PSReadLineKeyHandler -Key 'Ctrl+k' -ScriptBlock {
+        param($key, $arg)
+
+        try {
+            [Microsoft.PowerShell.PSConsoleReadLine]::SetMark()
+            [Microsoft.PowerShell.PSConsoleReadLine]::SetCursorPosition([int32]::MaxValue)
+            selectRegion
+            [Microsoft.PowerShell.PSConsoleReadLine]::Copy()
+            [Microsoft.PowerShell.PSConsoleReadLine]::KillRegion()
+        }
+        catch {}
+    }
 }
