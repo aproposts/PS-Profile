@@ -1,0 +1,1 @@
+. "$([Environment]::GetFolderPath('MyDocuments'))\MyPowerShell\$(Split-Path -Leaf $PSCommandPath)"
