@@ -4,11 +4,11 @@ This is the repository for my `profile.ps1` file. I use it for both Windows
 PowerShell 5.1 and PowerShell (Core/6+) and all PowerShell hosts (Windows
 Terminal, VSCode, etc.).
 
-I keep one copy at the PowerShell (Core/6+) `$PROFILE.CurrentUserAllHosts` at a
-custom location `MyPowerShell`, sibling to the `PowerShell` and
-`WindowsPowerShell` folders under "My Documents". The default profile locations
-have files which then dot-source files of the same name in the `MyPowerShell`
-directory. The contents of all those files are contained in `redirect.profile.ps1`.
+I keep unified `*profile.ps1` files at a custom location: `MyPowerShell`,
+sibling to the `PowerShell` and `WindowsPowerShell` folders under "My
+Documents". The default profile locations have files which then dot-source files
+of the same name in the `MyPowerShell` directory. The contents of all those
+files are contained in `redirect.profile.ps1`.
 
 ## Features
 
