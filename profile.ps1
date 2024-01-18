@@ -3,6 +3,7 @@ Set-Alias -Name 'gh' -Value 'Get-Help'
 Set-Alias -Name 'mc' -Value 'Measure-Command'
 Set-Alias -Name 'rvdns' -Value 'Resolve-DnsName'
 Set-Alias -Name 'gsc' -Value 'Get-Secret'
+Set-Alias -Name 'ttc' -Value 'Test-TCPConnection'
 
 # Convenient default parameters.
 $PSDefaultParameterValues = @{
@@ -10,33 +11,52 @@ $PSDefaultParameterValues = @{
     'Get-Secret:Name'                   = 'sys'
     'New-PSSession:Credential'          = { Get-Secret }
     'Connect-SharedResource:Credential' = { Get-Secret }
+    'Get-LapsCredential.ps1:Credential' = { Get-Secret }
+    'Invoke-As.ps1:Credential'          = { Get-Secret }
+    'Start-As.ps1:Credential'           = { Get-Secret }
 }
 
-# Add the CurrentUser Windows Powershell Scripts location to the environment path.
-if ($PSVersionTable.PSEdition -eq 'Desktop' -or
-    $PSVersionTable.OS -like '*Windows*'
-) {
-    $local:scriptPath = '{0}\WindowsPowershell\Scripts' -f [System.Environment]::GetFolderPath('MyDocuments')
-    [System.Collections.ArrayList] $local:envPathArray = $env:Path -split ';'
-
-    if ($local:scriptPath -notin $local:envPathArray) {
-        $local:envPathArray.Add($scriptPath) | Out-Null
-        $env:Path = $local:envPathArray -join ';'
-    }
-}
-
-# Add the CurrentUser Windows Powershell module path to the new/core Powershell module path.
+# If running new/core PowerShell on Windows, add the Windows PowerShell
+# CurrentUser module path location to the PSModulePath.
 if ($PSVersionTable.PSEdition -eq 'Core' -and
     $PSVersionTable.OS -like '*Windows*'
 ) {
-    [System.Collections.ArrayList] $local:modulePathArray = $env:PSModulePath.Split(';')
-    $local:currUserWinPSPath = (
-        '{0}\WindowsPowerShell\Modules' -f [System.Environment]::GetFolderPath('MyDocuments')
-    )
-    
-    if (-not $modulePathArray.Contains($local:currUserWinPSPath)) {
-        $local:modulePathArray.Insert(1, $local:currUserWinPSPath) | Out-Null
-        $env:PSModulePath = $local:modulePathArray -join ';'
+    & {
+        $local:modulePathArray = [System.Collections.ArrayList] $env:PSModulePath.Split(';')
+        $local:currUserWinPSPath = (
+            '{0}\WindowsPowerShell\Modules' -f [System.Environment]::GetFolderPath('MyDocuments')
+        )
+        
+        if ($local:currUserWinPSPath -notin $local:modulePathArray) {
+            $local:modulePathArray.Insert(1, $local:currUserWinPSPath) | Out-Null
+            $env:PSModulePath = $local:modulePathArray -join ';'
+        }
+    }
+}
+
+# If running either PowerShell version on Windows, add locations to the
+# environment path and PSModulePath.
+if ($PSVersionTable.PSEdition -eq 'Desktop' -or
+    $PSVersionTable.OS -like '*Windows*'
+) {
+    & {
+        # Add MyPowerShell Scripts location to the environment path.
+        $local:myScriptPath = '{0}\MyPowerShell\Scripts' -f [System.Environment]::GetFolderPath('MyDocuments')
+        $local:envPathArray = [System.Collections.ArrayList] $env:Path.Split(';')
+
+        if ($local:myScriptPath -notin $local:envPathArray) {
+            $local:envPathArray.Insert(0, $local:myScriptPath) | Out-Null
+            $env:Path = $local:envPathArray -join ';'
+        }
+
+        # Add MyPowerShell Modules location to the module path.
+        $local:myPSModulePath = '{0}\MyPowerShell\Modules' -f [System.Environment]::GetFolderPath('MyDocuments') 
+        $local:modulePathArray = [System.Collections.ArrayList] $env:PSModulePath.Split(';')
+
+        if ($local:myPSModulePath -notin $local:modulePathArray) {
+            $local:modulePathArray.Insert(0, $local:myPSModulePath) | Out-Null
+            $env:PSModulePath = $local:modulePathArray -join ';'
+        }
     }
 }
 
@@ -150,7 +170,7 @@ function prompt {
 
 # PSReadline Configuration
 if (Get-Module -Name PSReadLine) {
-    # Set-PSReadLineKeyHandler -Key Tab -Function Complete # Redundnat in Emacs EditMode
+    # Set-PSReadLineKeyHandler -Key Tab -Function Complete # Redundant in Emacs EditMode
     Set-PSReadLineOption -EditMode Emacs
     Set-PSReadLineKeyHandler -Key @('UpArrow', 'Ctrl+p') -Function HistorySearchBackward
     Set-PSReadLineKeyHandler -Key @('DownArrow', 'Ctrl+n') -Function HistorySearchForward
@@ -247,5 +267,80 @@ if (Get-Module -Name PSReadLine) {
             [Microsoft.PowerShell.PSConsoleReadLine]::KillRegion()
         }
         catch {}
+    }
+
+    # This example will replace any aliases on the command line with the resolved commands.
+    $setPSReadLineKeyHandlerSplat = @{
+        Chord            = "Alt+%"
+        BriefDescription = 'ExpandAliases'
+        Description      = "Replace all aliases with the full command"
+    }
+    Set-PSReadLineKeyHandler @setPSReadLineKeyHandlerSplat -ScriptBlock {
+        param($key, $arg)
+
+        $ast = $null
+        $tokens = $null
+        $errors = $null
+        $cursor = $null
+        [Microsoft.PowerShell.PSConsoleReadLine]::GetBufferState([ref]$ast, [ref]$tokens, [ref]$errors, [ref]$cursor)
+
+        $startAdjustment = 0
+        foreach ($token in $tokens) {
+            if ($token.TokenFlags -band [System.Management.Automation.Language.TokenFlags]::CommandName) {
+                $alias = $ExecutionContext.InvokeCommand.GetCommand($token.Extent.Text, 'Alias')
+                if ($alias -ne $null) {
+                    $resolvedCommand = $alias.ResolvedCommandName
+                    if ($resolvedCommand -ne $null) {
+                        $extent = $token.Extent
+                        $length = $extent.EndOffset - $extent.StartOffset
+                        [Microsoft.PowerShell.PSConsoleReadLine]::Replace(
+                            $extent.StartOffset + $startAdjustment,
+                            $length,
+                            $resolvedCommand)
+
+                        # Our copy of the tokens won't have been updated, so we need to
+                        # adjust by the difference in length
+                        $startAdjustment += ($resolvedCommand.Length - $length)
+                    }
+                }
+            }
+        }
+    }
+
+    # F1 for help on the command line - naturally
+    $setPSReadLineKeyHandlerSplat = @{
+        Chord            = 'Ctrl+F1'
+        BriefDescription = 'CommandHelp'
+        Description      = "Open the help window for the current command"
+    }
+    Set-PSReadLineKeyHandler @setPSReadLineKeyHandlerSplat -ScriptBlock {
+        param($key, $arg)
+
+        $ast = $null
+        $tokens = $null
+        $errors = $null
+        $cursor = $null
+        [Microsoft.PowerShell.PSConsoleReadLine]::GetBufferState([ref]$ast, [ref]$tokens, [ref]$errors, [ref]$cursor)
+
+        $commandAst = $ast.FindAll( {
+                $node = $args[0]
+                $node -is [System.Management.Automation.Language.CommandAst] -and
+                $node.Extent.StartOffset -le $cursor -and
+                $node.Extent.EndOffset -ge $cursor
+            }, $true) | Select-Object -Last 1
+
+        if ($commandAst -ne $null) {
+            $commandName = $commandAst.GetCommandName()
+            if ($commandName -ne $null) {
+                $command = $ExecutionContext.InvokeCommand.GetCommand($commandName, 'All')
+                if ($command -is [System.Management.Automation.AliasInfo]) {
+                    $commandName = $command.ResolvedCommandName
+                }
+
+                if ($commandName -ne $null) {
+                    Get-Help $commandName -ShowWindow
+                }
+            }
+        }
     }
 }

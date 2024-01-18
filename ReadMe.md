@@ -1,18 +1,23 @@
 # PowerShell Profile
 
 This is the repository for my `profile.ps1` file. I use it for both Windows
-PowerShell 5.1 and PowerShell (Core) 7.2 and all PowerShell hosts (Windows
+PowerShell 5.1 and PowerShell (Core/6+) and all PowerShell hosts (Windows
 Terminal, VSCode, etc.).
 
-I keep one copy at the PowerShell (Core) 7.2 `$PROFILE.CurrentUserAllHosts`
-location (`~\Documents\Powershell\profile.ps1`) and have stub `profile.ps1`
-files for Windows PowerShell and other users which dot-source this profile.
+I keep one copy at the PowerShell (Core/6+) `$PROFILE.CurrentUserAllHosts` at a
+custom location `MyPowerShell`, sibling to the `PowerShell` and
+`WindowsPowerShell` folders under "My Documents". The default profile locations
+have files which then dot-source files of the same name in the `MyPowerShell`
+directory. The contents of all those files are contained in `redirect.profile.ps1`.
 
 ## Features
 
 The goal with this profile is to provide small enhancements which make for a
 more pleasant terminal experience without going overboard on the level of
-customization. If it were to be branded, 'Default Plus' would be a good name.
+customization in the vein of [Oh My Posh](https://ohmyposh.dev/). If it were to
+be branded, 'Default Plus' would be a good name.
+
+**The sub-sections below are out of date, I'll fix them up eventually.**
 
 ### Aliases
 
