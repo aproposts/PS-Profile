@@ -171,7 +171,7 @@ function prompt {
 # PSReadline Configuration
 if (Get-Module -Name PSReadLine) {
     switch ((Get-Module PSReadLine).Version) {
-        { $_ -ge 2.1 -and $_ -lt 2.2 -or $PSVersionTable.PSVersion -lt '7.2' } {
+        { $_ -ge 2.1 -and $_ -lt 2.2 -and $PSVersionTable.PSVersion -lt '7.2' } {
             Set-PSReadLineOption -PredictionSource History
         }
         { $_ -ge 2.2 -and $PSVersionTable.PSVersion -gt '7.2' } {
