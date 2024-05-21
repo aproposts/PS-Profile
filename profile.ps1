@@ -22,14 +22,14 @@ if ($PSVersionTable.PSEdition -eq 'Core' -and
     $PSVersionTable.OS -like '*Windows*'
 ) {
     & {
-        $local:modulePathArray = [System.Collections.ArrayList] $env:PSModulePath.Split(';')
-        $local:currUserWinPSPath = (
+        $modulePathArray = [System.Collections.ArrayList] $env:PSModulePath.Split(';')
+        $currUserWinPSPath = (
             '{0}\WindowsPowerShell\Modules' -f [System.Environment]::GetFolderPath('MyDocuments')
         )
         
-        if ($local:currUserWinPSPath -notin $local:modulePathArray) {
-            $local:modulePathArray.Insert(1, $local:currUserWinPSPath) | Out-Null
-            $env:PSModulePath = $local:modulePathArray -join ';'
+        if ($currUserWinPSPath -notin $modulePathArray) {
+            $modulePathArray.Insert(1, $currUserWinPSPath) | Out-Null
+            $env:PSModulePath = $modulePathArray -join ';'
         }
     }
 }
@@ -41,21 +41,21 @@ if ($PSVersionTable.PSEdition -eq 'Desktop' -or
 ) {
     & {
         # Add MyPowerShell Scripts location to the environment path.
-        $local:myScriptPath = '{0}\MyPowerShell\Scripts' -f [System.Environment]::GetFolderPath('MyDocuments')
-        $local:envPathArray = [System.Collections.ArrayList] $env:Path.Split(';')
+        $myScriptPath = '{0}\MyPowerShell\Scripts' -f [System.Environment]::GetFolderPath('MyDocuments')
+        $envPathArray = [System.Collections.ArrayList] $env:Path.Split(';')
 
-        if ($local:myScriptPath -notin $local:envPathArray) {
-            $local:envPathArray.Insert(0, $local:myScriptPath) | Out-Null
-            $env:Path = $local:envPathArray -join ';'
+        if ($myScriptPath -notin $envPathArray) {
+            $envPathArray.Insert(0, $myScriptPath) | Out-Null
+            $env:Path = $envPathArray -join ';'
         }
 
         # Add MyPowerShell Modules location to the module path.
-        $local:myPSModulePath = '{0}\MyPowerShell\Modules' -f [System.Environment]::GetFolderPath('MyDocuments') 
-        $local:modulePathArray = [System.Collections.ArrayList] $env:PSModulePath.Split(';')
+        $myPSModulePath = '{0}\MyPowerShell\Modules' -f [System.Environment]::GetFolderPath('MyDocuments') 
+        $modulePathArray = [System.Collections.ArrayList] $env:PSModulePath.Split(';')
 
-        if ($local:myPSModulePath -notin $local:modulePathArray) {
-            $local:modulePathArray.Insert(0, $local:myPSModulePath) | Out-Null
-            $env:PSModulePath = $local:modulePathArray -join ';'
+        if ($myPSModulePath -notin $modulePathArray) {
+            $modulePathArray.Insert(0, $myPSModulePath) | Out-Null
+            $env:PSModulePath = $modulePathArray -join ';'
         }
     }
 }
@@ -170,11 +170,23 @@ function prompt {
 
 # PSReadline Configuration
 if (Get-Module -Name PSReadLine) {
+    switch ((Get-Module PSReadLine).Version) {
+        { $_ -ge 2.1 -and $_ -lt 2.2 -or $PSVersionTable.PSVersion -lt '7.2' } {
+            Set-PSReadLineOption -PredictionSource History
+        }
+        { $_ -ge 2.2 -and $PSVersionTable.PSVersion -gt '7.2' } {
+            Set-PSReadLineOption -PredictionSource HistoryAndPlugin
+        }
+        { $_ -ge 2.1 } {
+            Set-PSReadLineOption -Colors @{ InlinePrediction = "$([char]27)[90;7;3m" }
+        }
+    }
     # Set-PSReadLineKeyHandler -Key Tab -Function Complete # Redundant in Emacs EditMode
     Set-PSReadLineOption -EditMode Emacs
     Set-PSReadLineKeyHandler -Key @('UpArrow', 'Ctrl+p') -Function HistorySearchBackward
     Set-PSReadLineKeyHandler -Key @('DownArrow', 'Ctrl+n') -Function HistorySearchForward
     Set-PSReadLineKeyHandler -Key 'Ctrl+Spacebar' -Function SetMark
+    Set-PSReadLineKeyHandler -Key 'Ctrl+v' -Function Paste
     Set-PSReadLineKeyHandler -Key 'Ctrl+/' -Function Undo
     Set-PSReadLineKeyHandler -Key 'Ctrl+?' -Function Redo
 
