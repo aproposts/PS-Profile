@@ -1,19 +1,34 @@
+
 # Set some aliases.
-Set-Alias -Name 'gh' -Value 'Get-Help'
-Set-Alias -Name 'mc' -Value 'Measure-Command'
-Set-Alias -Name 'rvdns' -Value 'Resolve-DnsName'
-Set-Alias -Name 'gsc' -Value 'Get-Secret'
-Set-Alias -Name 'ttc' -Value 'Test-TCPConnection'
+@{
+    gh    = 'Get-Help'
+    gsc   = 'Get-Secret'
+    gsi   = 'Get-SecretInfo'
+    mc    = 'Measure-Command'
+    popl  = 'Pop-Location'
+    pul   = 'Push-Location'
+    rvdns = 'Resolve-DnsName'
+    ttc   = 'Test-TCPConnection'
+    nsm   = 'New-MySmbMapping'
+    gsm   = 'Get-SmbMapping'
+    rsm   = 'Remove-SmbMapping'
+} | ForEach-Object {
+    foreach ($key in $_.Keys) {
+        Set-Alias -Name $key -Value $_[$key]
+    }
+}
 
 # Convenient default parameters.
 $PSDefaultParameterValues = @{
-    'Get-Help:ShowWindow'               = $true
-    'Get-Secret:Name'                   = 'sys'
-    'New-PSSession:Credential'          = { Get-Secret }
-    'Connect-SharedResource:Credential' = { Get-Secret }
-    'Get-LapsCredential.ps1:Credential' = { Get-Secret }
-    'Invoke-As.ps1:Credential'          = { Get-Secret }
-    'Start-As.ps1:Credential'           = { Get-Secret }
+    'Get-Help:Online'                                        = $true
+    'Get-Secret:Name'                                        = 'sys'
+    'New-PSSession:Credential'                               = { Get-Secret }
+    'New-MySmbMapping:Credential'                            = { Get-Secret }
+    'Connect-SharedResource:Credential'                      = { Get-Secret }
+    'Get-LapsCredential.ps1:Credential'                      = { Get-Secret }
+    'Invoke-As.ps1:Credential'                               = { Get-Secret }
+    'Start-As.ps1:Credential'                                = { Get-Secret }
+    'Test-PendingReboot:SkipConfigurationManagerClientCheck' = $true
 }
 
 # If running new/core PowerShell on Windows, add the Windows PowerShell
@@ -171,11 +186,11 @@ function prompt {
 # PSReadline Configuration
 if (Get-Module -Name PSReadLine) {
     switch ((Get-Module PSReadLine).Version) {
-        { $_ -ge 2.1 -and $_ -lt 2.2 -and $PSVersionTable.PSVersion -lt '7.2' } {
-            Set-PSReadLineOption -PredictionSource History
-        }
         { $_ -ge 2.2 -and $PSVersionTable.PSVersion -gt '7.2' } {
             Set-PSReadLineOption -PredictionSource HistoryAndPlugin
+        }
+        { $_ -ge 2.1 -and $_ -lt 2.2 -and $PSVersionTable.PSVersion -lt '7.2' } {
+            Set-PSReadLineOption -PredictionSource History
         }
         { $_ -ge 2.1 } {
             Set-PSReadLineOption -Colors @{ InlinePrediction = "$([char]27)[90;7;3m" }
@@ -282,77 +297,77 @@ if (Get-Module -Name PSReadLine) {
     }
 
     # This example will replace any aliases on the command line with the resolved commands.
-    $setPSReadLineKeyHandlerSplat = @{
+    @{
         Chord            = "Alt+%"
         BriefDescription = 'ExpandAliases'
         Description      = "Replace all aliases with the full command"
-    }
-    Set-PSReadLineKeyHandler @setPSReadLineKeyHandlerSplat -ScriptBlock {
-        param($key, $arg)
+        ScriptBlock      = {
+            param($key, $arg)
 
-        $ast = $null
-        $tokens = $null
-        $errors = $null
-        $cursor = $null
-        [Microsoft.PowerShell.PSConsoleReadLine]::GetBufferState([ref]$ast, [ref]$tokens, [ref]$errors, [ref]$cursor)
-
-        $startAdjustment = 0
-        foreach ($token in $tokens) {
-            if ($token.TokenFlags -band [System.Management.Automation.Language.TokenFlags]::CommandName) {
-                $alias = $ExecutionContext.InvokeCommand.GetCommand($token.Extent.Text, 'Alias')
-                if ($alias -ne $null) {
-                    $resolvedCommand = $alias.ResolvedCommandName
-                    if ($resolvedCommand -ne $null) {
-                        $extent = $token.Extent
-                        $length = $extent.EndOffset - $extent.StartOffset
-                        [Microsoft.PowerShell.PSConsoleReadLine]::Replace(
-                            $extent.StartOffset + $startAdjustment,
-                            $length,
-                            $resolvedCommand)
-
-                        # Our copy of the tokens won't have been updated, so we need to
-                        # adjust by the difference in length
-                        $startAdjustment += ($resolvedCommand.Length - $length)
+            $ast = $null
+            $tokens = $null
+            $errors = $null
+            $cursor = $null
+            [Microsoft.PowerShell.PSConsoleReadLine]::GetBufferState([ref]$ast, [ref]$tokens, [ref]$errors, [ref]$cursor)
+    
+            $startAdjustment = 0
+            foreach ($token in $tokens) {
+                if ($token.TokenFlags -band [System.Management.Automation.Language.TokenFlags]::CommandName) {
+                    $alias = $ExecutionContext.InvokeCommand.GetCommand($token.Extent.Text, 'Alias')
+                    if ($alias -ne $null) {
+                        $resolvedCommand = $alias.ResolvedCommandName
+                        if ($resolvedCommand -ne $null) {
+                            $extent = $token.Extent
+                            $length = $extent.EndOffset - $extent.StartOffset
+                            [Microsoft.PowerShell.PSConsoleReadLine]::Replace(
+                                $extent.StartOffset + $startAdjustment,
+                                $length,
+                                $resolvedCommand)
+    
+                            # Our copy of the tokens won't have been updated, so we need to
+                            # adjust by the difference in length
+                            $startAdjustment += ($resolvedCommand.Length - $length)
+                        }
                     }
                 }
             }
         }
-    }
+    } | ForEach-Object { Set-PSReadLineKeyHandler @_ }
 
     # F1 for help on the command line - naturally
-    $setPSReadLineKeyHandlerSplat = @{
+    @{
         Chord            = 'Ctrl+F1'
         BriefDescription = 'CommandHelp'
         Description      = "Open the help window for the current command"
-    }
-    Set-PSReadLineKeyHandler @setPSReadLineKeyHandlerSplat -ScriptBlock {
-        param($key, $arg)
+        ScriptBlock      = {
+            param($key, $arg)
 
-        $ast = $null
-        $tokens = $null
-        $errors = $null
-        $cursor = $null
-        [Microsoft.PowerShell.PSConsoleReadLine]::GetBufferState([ref]$ast, [ref]$tokens, [ref]$errors, [ref]$cursor)
-
-        $commandAst = $ast.FindAll( {
-                $node = $args[0]
-                $node -is [System.Management.Automation.Language.CommandAst] -and
-                $node.Extent.StartOffset -le $cursor -and
-                $node.Extent.EndOffset -ge $cursor
-            }, $true) | Select-Object -Last 1
-
-        if ($commandAst -ne $null) {
-            $commandName = $commandAst.GetCommandName()
-            if ($commandName -ne $null) {
-                $command = $ExecutionContext.InvokeCommand.GetCommand($commandName, 'All')
-                if ($command -is [System.Management.Automation.AliasInfo]) {
-                    $commandName = $command.ResolvedCommandName
-                }
-
+            $ast = $null
+            $tokens = $null
+            $errors = $null
+            $cursor = $null
+            [Microsoft.PowerShell.PSConsoleReadLine]::GetBufferState([ref]$ast, [ref]$tokens, [ref]$errors, [ref]$cursor)
+    
+            $commandAst = $ast.FindAll( {
+                    $node = $args[0]
+                    $node -is [System.Management.Automation.Language.CommandAst] -and
+                    $node.Extent.StartOffset -le $cursor -and
+                    $node.Extent.EndOffset -ge $cursor
+                }, $true) | Select-Object -Last 1
+    
+            if ($commandAst -ne $null) {
+                $commandName = $commandAst.GetCommandName()
                 if ($commandName -ne $null) {
-                    Get-Help $commandName -ShowWindow
+                    $command = $ExecutionContext.InvokeCommand.GetCommand($commandName, 'All')
+                    if ($command -is [System.Management.Automation.AliasInfo]) {
+                        $commandName = $command.ResolvedCommandName
+                    }
+    
+                    if ($commandName -ne $null) {
+                        Get-Help $commandName -ShowWindow
+                    }
                 }
             }
         }
-    }
+    } | ForEach-Object { Set-PSReadLineKeyHandler @_ }
 }
